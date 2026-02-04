@@ -48,12 +48,81 @@
 - **终端**：框架内终端组件或 `pty` + 自家渲染。
 - **PyTurtle/Pygame**：以子进程运行用户脚本，通过管道或 socket 将绘图/窗口嵌入右侧区域，或使用无头/离屏渲染再贴到 GUI（具体方案待定）。
 
+## 安装与运行
+
+### 快速开始（推荐）
+
+**一键运行，自动安装所有依赖：**
+
+```bash
+# 克隆仓库
+git clone <repository-url>
+cd pide
+
+# 直接运行（会自动检测系统并安装依赖）
+make run
+
+# 或者使用脚本
+./run-pide
+```
+
+首次运行时会自动：
+- ✅ 检测操作系统（macOS/Linux）
+- ✅ 检测 Linux 发行版（Ubuntu/Debian/Fedora/Arch 等）
+- ✅ 自动安装系统依赖（需要 sudo 权限）
+- ✅ 自动安装 Python 依赖（PySide6 等）
+
+### 手动安装（可选）
+
+如果需要手动控制安装过程：
+
+```bash
+# 运行安装脚本
+./setup.sh
+
+# 或者使用 Makefile
+make setup
+```
+
+### Linux 系统依赖
+
+脚本会自动安装，但如果你想手动安装：
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get update
+sudo apt-get install -y python3-pip python3-venv libxcb-xinerama0 libxcb-cursor0 libxcb-xfixes0
+```
+
+**Fedora/RHEL:**
+```bash
+sudo dnf install python3-pip python3-devel libxcb xcb-util xcb-util-image
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S python python-pip libxcb
+```
+
+### 使用 uv（可选，更快）
+
+如果安装了 `uv`（快速 Python 包管理器），安装会更快：
+
+```bash
+# 安装 uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 然后正常运行即可
+make run
+```
+
 ## 当前阶段
 
 - [x] 需求与愿景整理（本文档）
-- [ ] 选定 GUI 框架与技术栈
-- [ ] 搭建最小单窗口布局（Sidebar + Editor + Terminal + 右侧占位）
-- [ ] 实现编辑与运行、终端联动
+- [x] 选定 GUI 框架与技术栈（PySide6）
+- [x] 搭建最小单窗口布局（Sidebar + Editor + Terminal + 右侧占位）
+- [x] 实现编辑与运行、终端联动
+- [x] 语法高亮和智能缩进
 - [ ] 实现右侧 PyTurtle/Pygame 渲染窗
 
 ## 命名

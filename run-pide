@@ -1,0 +1,62 @@
+#!/bin/bash
+# Pide launcher script - Auto-setup and run
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Find Python 3.10+
+find_python() {
+    for version in 12 11 10; do
+        if command -v python3.$version > /dev/null 2>&1; then
+            PYTHON_VERSION=$(python3.$version --version 2>&1 | awk '{print $2}')
+            MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+            MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+            if [ "$MAJOR" -eq 3 ] && [ "$MINOR" -ge 10 ]; then
+                echo "python3.$version"
+                return 0
+            fi
+        fi
+    done
+    
+    if command -v python3 > /dev/null 2>&1; then
+        PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
+        MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+        MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+        if [ "$MAJOR" -eq 3 ] && [ "$MINOR" -ge 10 ]; then
+            echo "python3"
+            return 0
+        fi
+    fi
+    
+    echo "python3"
+}
+
+PYTHON_CMD=$(find_python)
+
+# Check if setup is needed
+NEED_SETUP=false
+
+# Check if Python dependencies are installed
+if ! $PYTHON_CMD -c "import PySide6" 2>/dev/null; then
+    NEED_SETUP=true
+fi
+
+# Run setup if needed
+if [ "$NEED_SETUP" = true ]; then
+    echo "First run detected. Setting up dependencies..."
+    chmod +x setup.sh 2>/dev/null || true
+    ./setup.sh
+    # Re-find Python after setup (in case setup.sh exported PYTHON_CMD)
+    if [ -n "$PYTHON_CMD" ]; then
+        PYTHON_CMD=$(find_python)
+    fi
+fi
+
+# Run the application
+if command -v uv > /dev/null 2>&1; then
+    uv run $PYTHON_CMD -m pide "$@"
+else
+    $PYTHON_CMD -m pide "$@"
+fi
