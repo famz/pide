@@ -30,8 +30,8 @@ from PySide6.QtGui import (
 import json
 import re
 
-# User data directory
-PIDE_HOME = Path.home() / ".pide"
+# User data directory - use code directory in the program's directory
+PIDE_HOME = Path(__file__).parent.parent / "code"
 
 # Demo programs
 DEMOS = {
