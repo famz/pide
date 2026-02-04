@@ -42,6 +42,10 @@ check-uv:
 run: check-deps
 	@PYTHON_CMD=$$($(MAKE) -s find-python); \
 	if command -v uv > /dev/null 2>&1; then \
+		if [ ! -d ".venv" ]; then \
+			echo "Creating virtual environment with uv..."; \
+			uv venv; \
+		fi; \
 		uv run $$PYTHON_CMD -m pide; \
 	else \
 		$$PYTHON_CMD -m pide; \

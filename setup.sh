@@ -50,10 +50,46 @@ detect_distro() {
     echo_info "Detected distribution: $DISTRO"
 }
 
+# Check if system dependencies are already installed
+check_system_deps() {
+    if [ "$OS" != "linux" ]; then
+        return 0  # macOS doesn't need system deps check
+    fi
+
+    case $DISTRO in
+        ubuntu|debian)
+            # Check if key packages are installed
+            if dpkg-query -W -f='${Status}' python3-pip libxcb1 libxcb-xinerama0 2>/dev/null | grep -q "install ok installed"; then
+                return 0  # Dependencies already installed
+            fi
+            ;;
+        fedora|rhel|centos)
+            # Check if key packages are installed
+            if rpm -q python3-pip libxcb 2>/dev/null > /dev/null; then
+                return 0  # Dependencies already installed
+            fi
+            ;;
+        arch|manjaro)
+            # Check if key packages are installed
+            if pacman -Q python python-pip libxcb 2>/dev/null > /dev/null; then
+                return 0  # Dependencies already installed
+            fi
+            ;;
+    esac
+    
+    return 1  # Dependencies need to be installed
+}
+
 # Install system dependencies for Linux
 install_system_deps() {
     if [ "$OS" != "linux" ]; then
         echo_info "macOS detected - system dependencies should be handled by Homebrew if needed"
+        return 0
+    fi
+
+    # Check if dependencies are already installed
+    if check_system_deps; then
+        echo_info "System dependencies already installed, skipping..."
         return 0
     fi
 
@@ -145,6 +181,11 @@ install_python_deps() {
     # Check if uv is available
     if command -v uv > /dev/null 2>&1; then
         echo_info "Using uv for faster dependency installation"
+        # Create virtual environment if it doesn't exist
+        if [ ! -d ".venv" ]; then
+            echo_info "Creating virtual environment with uv..."
+            uv venv
+        fi
         if ! uv pip install -r requirements.txt; then
             echo_error "Failed to install dependencies with uv"
             exit 1
