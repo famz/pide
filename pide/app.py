@@ -28,6 +28,7 @@ from PySide6.QtGui import (
     QPolygonF, QTransform, QShortcut,
 )
 import json
+import math
 import re
 
 # User data directory - use code directory in the program's directory
@@ -762,6 +763,7 @@ class TurtleCanvas(QGraphicsView):
 
         # Turtle state
         self.turtles = {}  # id -> (x, y, heading, visible, color)
+        self._turtle_cursors = {}  # id -> QGraphicsPolygonItem (cursor triangle)
 
         # Flip Y axis (turtle uses math coordinates)
         self.setTransform(QTransform().scale(1, -1))
@@ -769,10 +771,34 @@ class TurtleCanvas(QGraphicsView):
         # Track if we need to fit view
         self._auto_fit = True
 
+    def _triangle_points(self, x, y, heading_deg, size=14):
+        """Return 3 (x,y) points for turtle triangle; tip in heading direction."""
+        rad = math.radians(heading_deg)
+        c, s = math.cos(rad), math.sin(rad)
+        # Local: tip (1,0), back (-1, -0.4), (-1, 0.4); scale by size/2
+        h = size / 2
+        return [
+            (x + h * c, y + h * s),
+            (x + h * (-c - 0.4 * s), y + h * (-s + 0.4 * c)),
+            (x + h * (-c + 0.4 * s), y + h * (-s - 0.4 * c)),
+        ]
+
+    def _draw_turtle_cursor(self, x, y, heading, color):
+        """Draw one turtle cursor triangle; returns the graphics item."""
+        points = self._triangle_points(x, y, heading)
+        polygon = QPolygonF([QPointF(a, b) for a, b in points])
+        brush = QBrush(QColor(color))
+        pen = QPen(QColor("black"))
+        pen.setWidthF(0.5)
+        item = self.scene.addPolygon(polygon, pen, brush)
+        item.setZValue(1000)
+        return item
+
     def clear(self):
         """Clear the canvas."""
         self.scene.clear()
         self.turtles = {}
+        self._turtle_cursors = {}
         self.setBackgroundBrush(QBrush(QColor("white")))
         # Reset scene rect
         self.scene.setSceneRect(-400, -400, 800, 800)
@@ -843,9 +869,23 @@ class TurtleCanvas(QGraphicsView):
         text_item.setPos(x, y)
 
     def update_turtle(self, turtle_id, x, y, heading, visible, color):
-        """Update turtle position and draw if visible."""
+        """Update turtle position and draw cursor if visible."""
         self.turtles[turtle_id] = (x, y, heading, visible, color)
-        # We could draw turtle cursor here, but keeping it simple for now
+        if turtle_id in self._turtle_cursors:
+            self.scene.removeItem(self._turtle_cursors[turtle_id])
+            del self._turtle_cursors[turtle_id]
+        if visible:
+            self._turtle_cursors[turtle_id] = self._draw_turtle_cursor(x, y, heading, color)
+
+    def draw_stamp(self, x, y, heading, color):
+        """Draw a stamp (fixed triangle) at position."""
+        points = self._triangle_points(x, y, heading, size=12)
+        polygon = QPolygonF([QPointF(a, b) for a, b in points])
+        brush = QBrush(QColor(color))
+        pen = QPen(QColor("black"))
+        pen.setWidthF(0.5)
+        self.scene.addPolygon(polygon, pen, brush)
+        self._update_view()
 
     def process_command(self, cmd):
         """Process a turtle drawing command."""
@@ -868,6 +908,8 @@ class TurtleCanvas(QGraphicsView):
         elif cmd_type == "turtle_update":
             self.update_turtle(cmd["id"], cmd["x"], cmd["y"],
                               cmd["heading"], cmd["visible"], cmd["pen_color"])
+        elif cmd_type == "stamp":
+            self.draw_stamp(cmd["x"], cmd["y"], cmd["heading"], cmd["color"])
         elif cmd_type == "done":
             pass  # Program finished
 
@@ -968,6 +1010,7 @@ class MainWindow(QMainWindow):
         self.process = None
         self.current_file = None
         self._uses_turtle = False
+        self._stdout_buffer = ""
         self._setup_ui()
         self._setup_menu()
         self._setup_shortcuts()
@@ -1245,6 +1288,7 @@ class MainWindow(QMainWindow):
         """Run the current code in the editor."""
         self.terminal.clear()
         self.graphics_panel.clear()
+        self._stdout_buffer = ""
         self.terminal.appendPlainText(">>> Running...\n")
 
         code = self.editor.toPlainText()
@@ -1278,11 +1322,11 @@ class MainWindow(QMainWindow):
 
     def _on_stdout(self):
         data = self.process.readAllStandardOutput().data().decode()
-        # Process turtle commands if present
-        lines = data.split("\n")
+        self._stdout_buffer += data
+        lines = self._stdout_buffer.split("\n")
+        self._stdout_buffer = lines.pop() if lines else ""
         for line in lines:
             if line.startswith("__PIDE_TURTLE__:"):
-                # Parse and execute turtle command
                 try:
                     cmd_json = line[len("__PIDE_TURTLE__:"):]
                     cmd = json.loads(cmd_json)
@@ -1297,6 +1341,9 @@ class MainWindow(QMainWindow):
         self.terminal.appendPlainText(f"[ERROR] {data.rstrip()}")
 
     def _on_finished(self, exit_code, exit_status):
+        if self._stdout_buffer.strip():
+            self.terminal.appendPlainText(self._stdout_buffer.rstrip())
+            self._stdout_buffer = ""
         self.terminal.appendPlainText(f"\n>>> Process finished (exit code: {exit_code})")
         self.terminal.set_process(None)
 
@@ -1460,6 +1507,8 @@ class MainWindow(QMainWindow):
     def stop_code(self):
         if self.process and self.process.state() == QProcess.Running:
             self.process.kill()
+            self.graphics_panel.clear()
+            self._stdout_buffer = ""
             self.terminal.appendPlainText("\n>>> Process stopped")
             self.terminal.set_process(None)
 

@@ -6,9 +6,10 @@ but instead of drawing to a Tk window, it outputs JSON commands that can be rend
 by the Pide graphics panel.
 """
 
-import sys
 import json
 import math
+import sys
+import time
 
 # Global state
 _turtles = []
@@ -44,6 +45,12 @@ class Turtle:
         _turtles.append(self)
         _emit({"type": "turtle_create", "id": id(self)})
         self._update_turtle()
+
+    def _delay(self):
+        """Sleep based on speed() so animation is visible. 0=no delay, 1=slowest, 10=fast."""
+        if 1 <= self._speed_val <= 10:
+            # ~0.12s at 1, ~0.01s at 10
+            time.sleep(0.13 - 0.012 * self._speed_val)
 
     def _update_turtle(self):
         """Send turtle state update."""
@@ -81,6 +88,7 @@ class Turtle:
             self._fill_points.append((new_x, new_y))
 
         self._update_turtle()
+        self._delay()
 
     fd = forward
 
@@ -95,6 +103,7 @@ class Turtle:
         """Turn right by angle degrees."""
         self._heading -= angle
         self._update_turtle()
+        self._delay()
 
     rt = right
 
@@ -102,6 +111,7 @@ class Turtle:
         """Turn left by angle degrees."""
         self._heading += angle
         self._update_turtle()
+        self._delay()
 
     lt = left
 
@@ -128,6 +138,7 @@ class Turtle:
             self._fill_points.append((x, y))
 
         self._update_turtle()
+        self._delay()
 
     setpos = goto
     setposition = goto
@@ -144,6 +155,7 @@ class Turtle:
         """Set heading to angle degrees."""
         self._heading = angle
         self._update_turtle()
+        self._delay()
 
     seth = setheading
 
@@ -181,6 +193,7 @@ class Turtle:
             "size": size,
             "color": color,
         })
+        self._delay()
 
     def stamp(self):
         """Stamp turtle shape (simplified as triangle)."""
@@ -191,6 +204,7 @@ class Turtle:
             "heading": self._heading,
             "color": self._pen_color,
         })
+        self._delay()
 
     def penup(self):
         """Lift pen up."""

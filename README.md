@@ -123,7 +123,26 @@ make run
 - [x] 搭建最小单窗口布局（Sidebar + Editor + Terminal + 右侧占位）
 - [x] 实现编辑与运行、终端联动
 - [x] 语法高亮和智能缩进
-- [ ] 实现右侧 PyTurtle/Pygame 渲染窗
+- [x] 实现右侧 PyTurtle 渲染窗（海龟方向、速度、stamp、与 print 混用稳健解析；运行中断时清空画布）
+
+## 代码目录（code/）
+
+- **demo/**：内置示例（hello、猜数字、计算器、turtle 星星/螺旋/花等），首次运行自动生成。
+- **learn/**：课程或练习脚本，按需放置。
+
+运行带 `import turtle` 的脚本时，图形在右侧窗口内嵌显示，无需弹窗。
+
+最小示例：
+
+```python
+import turtle
+t = turtle.Turtle()
+t.speed(3)
+t.forward(100)
+t.left(90)
+t.forward(50)
+turtle.done()
+```
 
 ## 命名
 
